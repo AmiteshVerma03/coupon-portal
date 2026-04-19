@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:8080';
+// Use same-origin when frontend is served by Spring Boot; otherwise default to local backend.
+const API_BASE = window.location.origin.includes('localhost:8080') ? '' : 'http://localhost:8080';
 
 // ── API Helper ──────────────────────────────────────────
 const api = {

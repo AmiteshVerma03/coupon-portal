@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -29,11 +28,9 @@ import java.util.Optional;
 public class CouponRequestServiceImpl implements CouponRequestService {
 
     private final CouponRequestRepository couponRequestRepository;
-    private final CouponRepository        couponRepository;
-    private final UserRepository          userRepository;
-    private final NotificationService     notificationService;
-
-    // ── Submit Request ──────────────────────────────────────
+    private final CouponRepository couponRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -45,10 +42,6 @@ public class CouponRequestServiceImpl implements CouponRequestService {
 
         Long tenantId = user.getTenant().getId();
 
-        // Check if a coupon is immediately available
-        Optional<Coupon> availableCoupon = couponRepository.findAvailableCoupon(
-                tenantId, dto.getCourse(), dto.getPlatform(), LocalDate.now());
-
         CouponRequest couponRequest = CouponRequest.builder()
                 .user(user)
                 .course(dto.getCourse())
@@ -56,62 +49,35 @@ public class CouponRequestServiceImpl implements CouponRequestService {
                 .status(RequestStatus.PENDING)
                 .build();
 
-        if (availableCoupon.isPresent()) {
-            Coupon coupon = availableCoupon.get();
+        notificationService.sendNotification(
+                user,
+                "Your coupon request for '" + dto.getCourse() +
+                        "' is pending review by your manager/admin.",
+                NotificationType.GENERAL
+        );
 
-            // Assign coupon and mark as approved immediately
-            coupon.setUsedCount(coupon.getUsedCount() + 1);
-            couponRepository.save(coupon);
+        List<Coupon> available = couponRepository
+                .findAllAvailableByTenantId(tenantId, LocalDate.now());
 
-            couponRequest.setAssignedCoupon(coupon);
-            couponRequest.setStatus(RequestStatus.APPROVED);
+        if (!available.isEmpty()) {
+            String recommendations = available.stream()
+                    .limit(3)
+                    .map(c -> c.getCourse() + " (" + c.getPlatform() + ")")
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
 
             notificationService.sendNotification(
                     user,
-                    "Your coupon request for '" + dto.getCourse() +
-                    "' has been approved! Coupon code: " + coupon.getCode(),
-                    NotificationType.COUPON_ASSIGNED
+                    "While you wait, these courses have available coupons: " + recommendations,
+                    NotificationType.RECOMMENDATION
             );
-
-            log.info("Coupon auto-assigned to user {} for course {}",
-                    user.getEmail(), dto.getCourse());
-
-        } else {
-            // No coupon available — keep as PENDING for manager review
-            notificationService.sendNotification(
-                    user,
-                    "Your coupon request for '" + dto.getCourse() +
-                    "' is pending review by your manager.",
-                    NotificationType.GENERAL
-            );
-
-            // Send recommendation for available courses
-            List<Coupon> available = couponRepository
-                    .findAllAvailableByTenantId(tenantId, LocalDate.now());
-
-            if (!available.isEmpty()) {
-                String recommendations = available.stream()
-                        .limit(3)
-                        .map(c -> c.getCourse() + " (" + c.getPlatform() + ")")
-                        .reduce((a, b) -> a + ", " + b)
-                        .orElse("");
-
-                notificationService.sendNotification(
-                        user,
-                        "While you wait, these courses have available coupons: "
-                        + recommendations,
-                        NotificationType.RECOMMENDATION
-                );
-            }
-
-            log.info("Coupon request pending for user {} for course {}",
-                    user.getEmail(), dto.getCourse());
         }
+
+        log.info("Coupon request submitted as pending for user {} for course {}",
+                user.getEmail(), dto.getCourse());
 
         return mapToResponse(couponRequestRepository.save(couponRequest));
     }
-
-    // ── My Requests ─────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
@@ -122,8 +88,6 @@ public class CouponRequestServiceImpl implements CouponRequestService {
                 .toList();
     }
 
-    // ── All Requests for Tenant ─────────────────────────────
-
     @Override
     @Transactional(readOnly = true)
     public List<CouponRequestResponse> getAllRequestsForTenant(Long tenantId) {
@@ -133,19 +97,14 @@ public class CouponRequestServiceImpl implements CouponRequestService {
                 .toList();
     }
 
-    // ── Filter by Status ────────────────────────────────────
-
     @Override
     @Transactional(readOnly = true)
-    public List<CouponRequestResponse> getRequestsByStatus(
-            Long tenantId, RequestStatus status) {
+    public List<CouponRequestResponse> getRequestsByStatus(Long tenantId, RequestStatus status) {
         return couponRequestRepository.findAllByTenantIdAndStatus(tenantId, status)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
-
-    // ── Approve ─────────────────────────────────────────────
 
     @Override
     @Transactional
@@ -153,9 +112,8 @@ public class CouponRequestServiceImpl implements CouponRequestService {
 
         CouponRequest request = getValidatedRequest(requestId, tenantId);
 
-        // Find an available coupon for this course/platform
         Coupon coupon = couponRepository.findAvailableCoupon(
-                tenantId, request.getCourse(), request.getPlatform(), LocalDate.now())
+                        tenantId, request.getCourse(), request.getPlatform(), LocalDate.now())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No available coupon found for: " + request.getCourse()));
 
@@ -168,15 +126,13 @@ public class CouponRequestServiceImpl implements CouponRequestService {
         notificationService.sendNotification(
                 request.getUser(),
                 "Your coupon request for '" + request.getCourse() +
-                "' has been approved! Coupon code: " + coupon.getCode(),
+                        "' has been approved! Coupon code: " + coupon.getCode(),
                 NotificationType.REQUEST_APPROVED
         );
 
         log.info("Request {} approved, coupon {} assigned", requestId, coupon.getCode());
         return mapToResponse(couponRequestRepository.save(request));
     }
-
-    // ── Reject ──────────────────────────────────────────────
 
     @Override
     @Transactional
@@ -189,7 +145,7 @@ public class CouponRequestServiceImpl implements CouponRequestService {
         notificationService.sendNotification(
                 request.getUser(),
                 "Your coupon request for '" + request.getCourse() +
-                "' has been rejected. Please contact your manager for more information.",
+                        "' has been rejected. Please contact your manager for more information.",
                 NotificationType.REQUEST_REJECTED
         );
 
@@ -197,14 +153,11 @@ public class CouponRequestServiceImpl implements CouponRequestService {
         return mapToResponse(couponRequestRepository.save(request));
     }
 
-    // ── Helpers ─────────────────────────────────────────────
-
     private CouponRequest getValidatedRequest(Long requestId, Long tenantId) {
         CouponRequest request = couponRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Request not found with id: " + requestId));
 
-        // Ensure the request belongs to the manager's tenant
         if (!request.getUser().getTenant().getId().equals(tenantId)) {
             throw new TenantMismatchException(
                     "This request does not belong to your organization");

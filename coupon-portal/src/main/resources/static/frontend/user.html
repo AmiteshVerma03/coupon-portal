@@ -106,7 +106,7 @@
       <input type="text" id="req-platform" class="form-control" readonly/>
     </div>
     <p style="font-size:0.85rem;color:var(--text-soft);margin-bottom:0.5rem">
-      If a coupon is available it will be assigned immediately. Otherwise your request goes to your manager for review.
+      Your request will be sent to manager/admin for approval or rejection.
     </p>
     <div class="modal-actions">
       <button class="btn btn-outline btn-sm" onclick="closeModal('request-modal')">Cancel</button>
@@ -178,10 +178,7 @@
     btn.disabled = false;
     closeModal('request-modal');
     if (data?.success) {
-      const status = data.data.status;
-      const code   = data.data.assignedCouponCode;
-      if (status === 'APPROVED') toast(`✓ Coupon assigned! Code: ${code}`);
-      else toast('Request submitted — pending manager review');
+      toast('Request submitted - pending manager/admin review');
       loadCourses();
     } else {
       toast(data?.message || 'Failed to submit', 'error');
@@ -256,3 +253,5 @@
 </script>
 </body>
 </html>
+
+
