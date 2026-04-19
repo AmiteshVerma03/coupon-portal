@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Dashboard — Coupon Portal</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🎫</div>
+      <span>CouponPortal</span>
+    </div>
+
+    <span class="nav-section-label">Menu</span>
+    <div class="nav-item active" data-tab="courses" onclick="switchTab('courses',this)">
+      <span class="icon">📚</span> Available Courses
+    </div>
+    <div class="nav-item" data-tab="requests" onclick="switchTab('requests',this)">
+      <span class="icon">📋</span> My Requests
+    </div>
+    <div class="nav-item" data-tab="notifications" onclick="switchTab('notifications',this)">
+      <span class="icon">🔔</span> Notifications
+      <span id="unread-badge" class="badge badge-pending" style="margin-left:auto;display:none"></span>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">U</div>
+        <div>
+          <div class="user-name" id="sidebar-name">User</div>
+          <div class="user-role" id="sidebar-role">USER</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Available Courses -->
+    <div id="tab-courses" class="tab-pane active">
+      <div class="page-header">
+        <h1 class="page-title">Available Courses</h1>
+        <p class="page-subtitle">Browse courses with available coupons and request one</p>
+      </div>
+
+      <div id="courses-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem">
+        <div class="loading"><span class="spinner"></span> Loading courses…</div>
+      </div>
+    </div>
+
+    <!-- My Requests -->
+    <div id="tab-requests" class="tab-pane">
+      <div class="page-header">
+        <h1 class="page-title">My Requests</h1>
+        <p class="page-subtitle">Track the status of your coupon requests</p>
+      </div>
+
+      <div class="table-wrapper">
+        <div class="table-header">
+          <span class="table-title">All Requests</span>
+        </div>
+        <div id="requests-body">
+          <div class="loading"><span class="spinner"></span> Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div id="tab-notifications" class="tab-pane">
+      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h1 class="page-title">Notifications</h1>
+          <p class="page-subtitle">Your activity updates</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="markAllRead()">Mark all as read</button>
+      </div>
+
+      <div class="table-wrapper">
+        <div id="notif-list">
+          <div class="loading"><span class="spinner"></span> Loading…</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Request Coupon Modal -->
+<div class="modal-overlay" id="request-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Request Coupon</h2>
+      <button class="modal-close" onclick="closeModal('request-modal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Course</label>
+      <input type="text" id="req-course" class="form-control" readonly/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Platform</label>
+      <input type="text" id="req-platform" class="form-control" readonly/>
+    </div>
+    <p style="font-size:0.85rem;color:var(--text-soft);margin-bottom:0.5rem">
+      If a coupon is available it will be assigned immediately. Otherwise your request goes to your manager for review.
+    </p>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeModal('request-modal')">Cancel</button>
+      <button class="btn btn-accent btn-sm" id="confirm-request-btn" onclick="confirmRequest()">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  const user = requireAuth(['USER', 'MANAGER', 'ADMIN']);
+  renderSidebarUser();
+  let selectedCourse = '', selectedPlatform = '';
+
+  function switchTab(name, el) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    el.classList.add('active');
+    if (name === 'requests')      loadRequests();
+    if (name === 'notifications') loadNotifications();
+  }
+
+  // ── Load courses ──────────────────────────────────────
+  async function loadCourses() {
+    const data = await api.get('/api/user/courses');
+    const grid = document.getElementById('courses-grid');
+    if (!data?.success || !data.data.length) {
+      grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No courses with available coupons right now</p></div>`;
+      return;
+    }
+    grid.innerHTML = data.data.map(c => `
+      <div class="card" style="display:flex;flex-direction:column;gap:12px;transition:border-color 0.2s"
+           onmouseenter="this.style.borderColor='var(--border-md)'"
+           onmouseleave="this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div style="font-family:'Outfit',sans-serif;font-weight:600;margin-bottom:4px">${c.course}</div>
+            <div style="font-size:0.82rem;color:var(--text-muted)">${c.platform}</div>
+          </div>
+          <span class="badge badge-approved">Available</span>
+        </div>
+        <div style="display:flex;gap:12px;font-size:0.8rem;color:var(--text-muted)">
+          <span>🎟 ${c.remaining} left</span>
+          <span>📅 Expires ${fmtDate(c.expiryDate)}</span>
+        </div>
+        <button class="btn btn-accent btn-sm" style="align-self:flex-start"
+                onclick="openRequestModal('${c.course}','${c.platform}')">
+          Request Coupon
+        </button>
+      </div>
+    `).join('');
+  }
+
+  function openRequestModal(course, platform) {
+    selectedCourse = course;
+    selectedPlatform = platform;
+    document.getElementById('req-course').value = course;
+    document.getElementById('req-platform').value = platform;
+    openModal('request-modal');
+  }
+
+  async function confirmRequest() {
+    const btn = document.getElementById('confirm-request-btn');
+    btn.textContent = 'Submitting…';
+    btn.disabled = true;
+    const data = await api.post('/api/user/request-coupon', { course: selectedCourse, platform: selectedPlatform });
+    btn.textContent = 'Submit Request';
+    btn.disabled = false;
+    closeModal('request-modal');
+    if (data?.success) {
+      const status = data.data.status;
+      const code   = data.data.assignedCouponCode;
+      if (status === 'APPROVED') toast(`✓ Coupon assigned! Code: ${code}`);
+      else toast('Request submitted — pending manager review');
+      loadCourses();
+    } else {
+      toast(data?.message || 'Failed to submit', 'error');
+    }
+  }
+
+  // ── Load requests ─────────────────────────────────────
+  async function loadRequests() {
+    const data = await api.get('/api/user/my-requests');
+    const body = document.getElementById('requests-body');
+    if (!data?.success || !data.data.length) {
+      body.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No requests yet</p></div>`;
+      return;
+    }
+    body.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>Course</th><th>Platform</th><th>Status</th><th>Coupon Code</th><th>Requested</th></tr>
+        </thead>
+        <tbody>
+          ${data.data.map(r => `
+            <tr>
+              <td><strong>${r.course}</strong></td>
+              <td>${r.platform}</td>
+              <td>${statusBadge(r.status)}</td>
+              <td>${r.assignedCouponCode ? `<span class="coupon-code">${r.assignedCouponCode}</span>` : '—'}</td>
+              <td>${fmtDate(r.createdAt)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  // ── Notifications ─────────────────────────────────────
+  async function loadNotifications() {
+    const data = await api.get('/api/user/notifications');
+    const list = document.getElementById('notif-list');
+    if (!data?.success || !data.data.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">🔔</div><p>No notifications yet</p></div>`;
+      return;
+    }
+    list.innerHTML = data.data.map(n => `
+      <div class="notif-item ${n.readStatus ? '' : 'unread'}">
+        <div class="notif-dot ${n.readStatus ? 'read' : ''}"></div>
+        <div>
+          <div class="notif-msg">${n.message}</div>
+          <div class="notif-time">${fmtDate(n.createdAt)}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  async function markAllRead() {
+    await api.put('/api/user/notifications/mark-read');
+    loadNotifications();
+    loadUnreadCount();
+    toast('All notifications marked as read');
+  }
+
+  async function loadUnreadCount() {
+    const data = await api.get('/api/user/notifications/unread-count');
+    const badge = document.getElementById('unread-badge');
+    if (data?.success && data.data > 0) {
+      badge.textContent = data.data;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // Init
+  loadCourses();
+  loadUnreadCount();
+</script>
+</body>
+</html>

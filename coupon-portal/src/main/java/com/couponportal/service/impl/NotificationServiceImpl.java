@@ -1,7 +1,7 @@
 package com.couponportal.service.impl;
 
 import com.couponportal.dto.response.NotificationResponse;
-import com.couponportal.entity.Notification;
+import com.couponportal.entity.WebNotification;
 import com.couponportal.entity.User;
 import com.couponportal.enums.NotificationType;
 import com.couponportal.repository.NotificationRepository;
@@ -23,7 +23,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void sendNotification(User user, String message, NotificationType type) {
-        Notification notification = Notification.builder()
+        WebNotification notification = WebNotification.builder()
                 .user(user)
                 .message(message)
                 .type(type)
@@ -68,7 +68,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     // ── Mapper ──────────────────────────────────────────────
 
-    private NotificationResponse mapToResponse(Notification n) {
+   private NotificationResponse mapToResponse(WebNotification n) {
         return NotificationResponse.builder()
                 .id(n.getId())
                 .message(n.getMessage())

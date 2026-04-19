@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Manager Dashboard — Coupon Portal</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🎫</div>
+      <span>CouponPortal</span>
+    </div>
+
+    <span class="nav-section-label">Menu</span>
+    <div class="nav-item active" onclick="switchTab('all',this)">
+      <span class="icon">📋</span> All Requests
+    </div>
+    <div class="nav-item" onclick="switchTab('pending',this)">
+      <span class="icon">⏳</span> Pending
+      <span id="pending-count" class="badge badge-pending" style="margin-left:auto;display:none"></span>
+    </div>
+    <div class="nav-item" onclick="switchTab('approved',this)">
+      <span class="icon">✅</span> Approved
+    </div>
+    <div class="nav-item" onclick="switchTab('rejected',this)">
+      <span class="icon">❌</span> Rejected
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar" style="background:var(--warn)">M</div>
+        <div>
+          <div class="user-name" id="sidebar-name">Manager</div>
+          <div class="user-role" id="sidebar-role">MANAGER</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="page-header">
+      <h1 class="page-title" id="tab-heading">All Requests</h1>
+      <p class="page-subtitle">Review and manage employee coupon requests</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total</div>
+        <div class="stat-value accent" id="stat-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value warn" id="stat-pending">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Approved</div>
+        <div class="stat-value" style="color:var(--success)" id="stat-approved">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Rejected</div>
+        <div class="stat-value danger" id="stat-rejected">—</div>
+      </div>
+    </div>
+
+    <!-- Requests Table -->
+    <div class="table-wrapper">
+      <div class="table-header">
+        <span class="table-title" id="table-label">All Requests</span>
+      </div>
+      <div id="requests-body">
+        <div class="loading"><span class="spinner"></span> Loading…</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  requireAuth(['MANAGER', 'ADMIN']);
+  renderSidebarUser();
+
+  let currentFilter = 'ALL';
+  let allRequests = [];
+
+  async function loadRequests(status = null) {
+    const endpoint = status
+      ? `/api/manager/requests/filter?status=${status}`
+      : '/api/manager/requests';
+    const data = await api.get(endpoint);
+    allRequests = data?.data || [];
+    renderTable(allRequests);
+    if (!status) computeStats(allRequests);
+  }
+
+  function computeStats(requests) {
+    document.getElementById('stat-total').textContent    = requests.length;
+    document.getElementById('stat-pending').textContent  = requests.filter(r => r.status === 'PENDING').length;
+    document.getElementById('stat-approved').textContent = requests.filter(r => r.status === 'APPROVED').length;
+    document.getElementById('stat-rejected').textContent = requests.filter(r => r.status === 'REJECTED').length;
+
+    const pendingCount = requests.filter(r => r.status === 'PENDING').length;
+    const badge = document.getElementById('pending-count');
+    if (pendingCount > 0) { badge.textContent = pendingCount; badge.style.display = 'inline-flex'; }
+    else badge.style.display = 'none';
+  }
+
+  function renderTable(requests) {
+    const body = document.getElementById('requests-body');
+    if (!requests.length) {
+      body.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No requests found</p></div>`;
+      return;
+    }
+    body.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Employee</th><th>Course</th>
+            <th>Platform</th><th>Status</th><th>Coupon</th>
+            <th>Date</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${requests.map(r => `
+            <tr>
+              <td><span style="color:var(--text-muted);font-family:'DM Mono',monospace;font-size:0.78rem">#${r.id}</span></td>
+              <td><strong>${r.userName}</strong></td>
+              <td><strong>${r.course}</strong></td>
+              <td>${r.platform}</td>
+              <td>${statusBadge(r.status)}</td>
+              <td>${r.assignedCouponCode ? `<span class="coupon-code">${r.assignedCouponCode}</span>` : '—'}</td>
+              <td>${fmtDate(r.createdAt)}</td>
+              <td>
+                ${r.status === 'PENDING' ? `
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-success btn-sm" onclick="approve(${r.id})">Approve</button>
+                    <button class="btn btn-danger  btn-sm" onclick="reject(${r.id})">Reject</button>
+                  </div>` : '—'}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function approve(id) {
+    if (!confirm('Approve this request?')) return;
+    const data = await api.put(`/api/manager/approve/${id}`);
+    if (data?.success) { toast('Request approved and coupon assigned!'); loadRequests(); }
+    else toast(data?.message || 'Could not approve', 'error');
+  }
+
+  async function reject(id) {
+    if (!confirm('Reject this request?')) return;
+    const data = await api.put(`/api/manager/reject/${id}`);
+    if (data?.success) { toast('Request rejected'); loadRequests(); }
+    else toast(data?.message || 'Could not reject', 'error');
+  }
+
+  function switchTab(filter, el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    const labels = { all:'All Requests', pending:'Pending Requests', approved:'Approved Requests', rejected:'Rejected Requests' };
+    document.getElementById('tab-heading').textContent = labels[filter];
+    document.getElementById('table-label').textContent = labels[filter];
+
+    if (filter === 'all') loadRequests();
+    else loadRequests(filter.toUpperCase());
+  }
+
+  loadRequests();
+</script>
+</body>
+</html>

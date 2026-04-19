@@ -6,7 +6,7 @@ import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
+import com.couponportal.entity.WebNotification;
 import java.util.Collection;
 import java.util.List;
 
@@ -42,7 +42,7 @@ public class User implements UserDetails {
     private List<CouponRequest> couponRequests;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Notification> notifications;
+    private List<WebNotification> notifications;
 
     // ── UserDetails methods ─────────────────────────────────
 

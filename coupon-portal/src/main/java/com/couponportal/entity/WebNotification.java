@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class Notification {
+public class WebNotification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
