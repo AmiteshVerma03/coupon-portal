@@ -11,7 +11,7 @@ public interface UserService {
     // Task 1: paginated user listing for admin
     Page<UserResponse> getAllUsersInTenant(Long tenantId, int page, int size);
 
-    void deleteUser(Long userId);
+    void deleteUser(Long userId, Long tenantId);
 
     User getUserById(Long userId);
 

@@ -28,16 +28,16 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional
-    public CouponResponse createCoupon(CreateCouponDto dto) {
+    public CouponResponse createCoupon(CreateCouponDto dto, Long tenantId) {
 
         if (couponRepository.existsByCode(dto.getCode())) {
             throw new IllegalArgumentException(
                     "Coupon code already exists: " + dto.getCode());
         }
 
-        Tenant tenant = tenantRepository.findById(dto.getTenantId())
+        Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Tenant not found with id: " + dto.getTenantId()));
+                        "Tenant not found with id: " + tenantId));
 
         Coupon coupon = Coupon.builder()
                 .code(dto.getCode())
@@ -72,19 +72,19 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional(readOnly = true)
-    public CouponResponse getCouponById(Long id) {
-        return couponRepository.findById(id)
+    public CouponResponse getCouponById(Long id, Long tenantId) {
+        return couponRepository.findByIdAndTenantId(id, tenantId)
                 .map(this::mapToResponse)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Coupon not found with id: " + id));
+                        "Coupon not found with id: " + id + " for tenant: " + tenantId));
     }
 
     @Override
     @Transactional
-    public void deleteCoupon(Long id) {
-        Coupon coupon = couponRepository.findById(id)
+    public void deleteCoupon(Long id, Long tenantId) {
+        Coupon coupon = couponRepository.findByIdAndTenantId(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Coupon not found with id: " + id));
+                        "Coupon not found with id: " + id + " for tenant: " + tenantId));
         couponRepository.delete(coupon);
     }
 

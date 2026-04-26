@@ -3,6 +3,8 @@ package com.couponportal.service.impl;
 import com.couponportal.dto.response.UserResponse;
 import com.couponportal.entity.User;
 import com.couponportal.exception.ResourceNotFoundException;
+import com.couponportal.exception.TenantMismatchException;
+import com.couponportal.repository.RefreshTokenRepository;
 import com.couponportal.repository.UserRepository;
 import com.couponportal.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
+    private final UserRepository         userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -36,8 +39,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void deleteUser(Long userId) {
-        userRepository.delete(getUserById(userId));
+    public void deleteUser(Long userId, Long tenantId) {
+        User userToDelete = getUserById(userId);
+
+        if (!userToDelete.getTenant().getId().equals(tenantId)) {
+            throw new TenantMismatchException(
+                    "You are not allowed to delete users outside your tenant");
+        }
+
+        refreshTokenRepository.deleteByUserId(userId);
+        userRepository.delete(userToDelete);
     }
 
     @Override

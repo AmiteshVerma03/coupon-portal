@@ -20,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -157,6 +158,31 @@ public class CouponRequestServiceImpl implements CouponRequestService {
 
         log.info("Request {} rejected", requestId);
         return mapToResponse(couponRequestRepository.save(request));
+    }
+
+    @Override
+    @Transactional
+    public void withdrawRequest(Long requestId, Long userId) {
+        CouponRequest request = couponRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Request not found with id: " + requestId));
+
+        if (!request.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("You can only withdraw your own requests");
+        }
+
+        if (request.getStatus() != RequestStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending requests can be withdrawn");
+        }
+
+        notificationService.sendNotification(
+                request.getUser(),
+                "You withdrew your coupon request for '" + request.getCourse() + "'.",
+                NotificationType.GENERAL
+        );
+
+        couponRequestRepository.delete(request);
+        log.info("Request {} withdrawn by user {}", requestId, userId);
     }
 
     private CouponRequest getValidatedRequest(Long requestId, Long tenantId) {

@@ -29,11 +29,12 @@ public class AdminController {
 
     @PostMapping("/coupon")
     public ResponseEntity<ApiResponse<CouponResponse>> createCoupon(
-            @Valid @RequestBody CreateCouponDto dto) {
+            @Valid @RequestBody CreateCouponDto dto,
+            @AuthenticationPrincipal User user) {
 
         return ResponseEntity.ok(
                 ApiResponse.success("Coupon created successfully",
-                        couponService.createCoupon(dto)));
+                        couponService.createCoupon(dto, user.getTenant().getId())));
     }
 
     // Task 1 — paginated coupon list
@@ -51,18 +52,20 @@ public class AdminController {
 
     @GetMapping("/coupon/{id}")
     public ResponseEntity<ApiResponse<CouponResponse>> getCouponById(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
 
         return ResponseEntity.ok(
                 ApiResponse.success("Coupon fetched",
-                        couponService.getCouponById(id)));
+                        couponService.getCouponById(id, user.getTenant().getId())));
     }
 
     @DeleteMapping("/coupon/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteCoupon(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
 
-        couponService.deleteCoupon(id);
+        couponService.deleteCoupon(id, user.getTenant().getId());
         return ResponseEntity.ok(ApiResponse.success("Coupon deleted successfully"));
     }
 
@@ -83,9 +86,10 @@ public class AdminController {
 
     @DeleteMapping("/user/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteUser(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
 
-        userService.deleteUser(id);
+        userService.deleteUser(id, user.getTenant().getId());
         return ResponseEntity.ok(ApiResponse.success("User deleted successfully"));
     }
 

@@ -31,7 +31,9 @@ public class SecurityConfig {
 
     // ── Public endpoints (no token needed) ─────────────────
     private static final String[] PUBLIC_URLS = {
-            "/api/auth/**",
+            "/api/auth/register",
+            "/api/auth/login",
+            "/api/auth/refresh",
             "/actuator/health",
             "/actuator/info"
     };

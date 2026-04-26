@@ -59,6 +59,15 @@ public class UserController {
                         couponRequestService.submitRequest(dto, user.getId())));
     }
 
+    @DeleteMapping("/request-coupon/{id}")
+    public ResponseEntity<ApiResponse<Void>> withdrawCouponRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+
+        couponRequestService.withdrawRequest(id, user.getId());
+        return ResponseEntity.ok(ApiResponse.success("Coupon request withdrawn"));
+    }
+
     // Task 1 — paginated: user's own requests
     @GetMapping("/my-requests")
     public ResponseEntity<ApiResponse<Page<CouponRequestResponse>>> getMyRequests(

@@ -7,6 +7,7 @@ import com.couponportal.dto.response.AuthResponse;
 import com.couponportal.entity.RefreshToken;
 import com.couponportal.entity.Tenant;
 import com.couponportal.entity.User;
+import com.couponportal.enums.Role;
 import com.couponportal.exception.ResourceNotFoundException;
 import com.couponportal.exception.UnauthorizedException;
 import com.couponportal.repository.RefreshTokenRepository;
@@ -17,6 +18,7 @@ import com.couponportal.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -55,11 +57,15 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Tenant not found with id: " + request.getTenantId()));
 
+        if (request.getRole() != Role.USER) {
+            throw new AccessDeniedException("Public registration can only create USER accounts");
+        }
+
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(Role.USER)
                 .tenant(tenant)
                 .build();
 

@@ -21,6 +21,8 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     // non-paginated version kept for internal service use (e.g. approval lookup)
     List<Coupon> findAllByTenantId(Long tenantId);
 
+    Optional<Coupon> findByIdAndTenantId(Long id, Long tenantId);
+
     // find available coupon for a specific course and platform within a tenant
     @Query("""
             SELECT c FROM Coupon c

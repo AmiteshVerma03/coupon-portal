@@ -87,29 +87,34 @@
   requireAuth(['MANAGER', 'ADMIN']);
   renderSidebarUser();
 
-  let currentFilter = 'ALL';
-  let allRequests = [];
-
   async function loadRequests(status = null) {
     const endpoint = status
-      ? `/api/manager/requests/filter?status=${status}`
-      : '/api/manager/requests';
+      ? `/api/manager/requests/filter?status=${status}&page=0&size=200`
+      : '/api/manager/requests?page=0&size=200';
+
     const data = await api.get(endpoint);
-    allRequests = data?.data || [];
-    renderTable(allRequests);
-    if (!status) computeStats(allRequests);
+    const requests = extractList(data);
+    renderTable(requests);
+
+    if (!status) {
+      computeStats(requests);
+    }
   }
 
   function computeStats(requests) {
-    document.getElementById('stat-total').textContent    = requests.length;
-    document.getElementById('stat-pending').textContent  = requests.filter(r => r.status === 'PENDING').length;
-    document.getElementById('stat-approved').textContent = requests.filter(r => r.status === 'APPROVED').length;
-    document.getElementById('stat-rejected').textContent = requests.filter(r => r.status === 'REJECTED').length;
+    document.getElementById('stat-total').textContent = requests.length;
+    document.getElementById('stat-pending').textContent = requests.filter((r) => r.status === 'PENDING').length;
+    document.getElementById('stat-approved').textContent = requests.filter((r) => r.status === 'APPROVED').length;
+    document.getElementById('stat-rejected').textContent = requests.filter((r) => r.status === 'REJECTED').length;
 
-    const pendingCount = requests.filter(r => r.status === 'PENDING').length;
+    const pendingCount = requests.filter((r) => r.status === 'PENDING').length;
     const badge = document.getElementById('pending-count');
-    if (pendingCount > 0) { badge.textContent = pendingCount; badge.style.display = 'inline-flex'; }
-    else badge.style.display = 'none';
+    if (pendingCount > 0) {
+      badge.textContent = pendingCount;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
   }
 
   function renderTable(requests) {
@@ -118,6 +123,7 @@
       body.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No requests found</p></div>`;
       return;
     }
+
     body.innerHTML = `
       <table>
         <thead>
@@ -128,7 +134,7 @@
           </tr>
         </thead>
         <tbody>
-          ${requests.map(r => `
+          ${requests.map((r) => `
             <tr>
               <td><span style="color:var(--text-muted);font-family:'DM Mono',monospace;font-size:0.78rem">#${r.id}</span></td>
               <td><strong>${r.userName}</strong></td>
@@ -141,7 +147,7 @@
                 ${r.status === 'PENDING' ? `
                   <div style="display:flex;gap:6px">
                     <button class="btn btn-success btn-sm" onclick="approve(${r.id})">Approve</button>
-                    <button class="btn btn-danger  btn-sm" onclick="reject(${r.id})">Reject</button>
+                    <button class="btn btn-danger btn-sm" onclick="reject(${r.id})">Reject</button>
                   </div>` : '—'}
               </td>
             </tr>`).join('')}
@@ -152,21 +158,36 @@
   async function approve(id) {
     if (!confirm('Approve this request?')) return;
     const data = await api.put(`/api/manager/approve/${id}`);
-    if (data?.success) { toast('Request approved and coupon assigned!'); loadRequests(); }
-    else toast(data?.message || 'Could not approve', 'error');
+    if (data?.success) {
+      toast('Request approved and coupon assigned!');
+      loadRequests();
+    } else {
+      toast(data?.message || 'Could not approve', 'error');
+    }
   }
 
   async function reject(id) {
     if (!confirm('Reject this request?')) return;
     const data = await api.put(`/api/manager/reject/${id}`);
-    if (data?.success) { toast('Request rejected'); loadRequests(); }
-    else toast(data?.message || 'Could not reject', 'error');
+    if (data?.success) {
+      toast('Request rejected');
+      loadRequests();
+    } else {
+      toast(data?.message || 'Could not reject', 'error');
+    }
   }
 
   function switchTab(filter, el) {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
     el.classList.add('active');
-    const labels = { all:'All Requests', pending:'Pending Requests', approved:'Approved Requests', rejected:'Rejected Requests' };
+
+    const labels = {
+      all: 'All Requests',
+      pending: 'Pending Requests',
+      approved: 'Approved Requests',
+      rejected: 'Rejected Requests'
+    };
+
     document.getElementById('tab-heading').textContent = labels[filter];
     document.getElementById('table-label').textContent = labels[filter];
 
@@ -178,3 +199,4 @@
 </script>
 </body>
 </html>
+

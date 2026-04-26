@@ -26,4 +26,7 @@ public interface CouponRequestService {
 
     // Manager/Admin: reject a request
     CouponRequestResponse rejectRequest(Long requestId, Long tenantId);
+
+    // User: withdraw their own pending request
+    void withdrawRequest(Long requestId, Long userId);
 }

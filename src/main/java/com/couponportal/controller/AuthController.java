@@ -6,6 +6,7 @@ import com.couponportal.dto.request.RegisterRequest;
 import com.couponportal.dto.response.ApiResponse;
 import com.couponportal.dto.response.AuthResponse;
 import com.couponportal.entity.User;
+import com.couponportal.exception.UnauthorizedException;
 import com.couponportal.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,9 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @AuthenticationPrincipal User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Authentication required to logout");
+        }
 
         authService.logout(user.getId());
         return ResponseEntity.ok(

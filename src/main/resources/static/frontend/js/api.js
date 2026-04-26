@@ -109,6 +109,21 @@ function roleBadge(role) {
   return `<span class="badge ${map[role] || ''}">${role}</span>`;
 }
 
+// Handles both plain-list responses and Spring Page responses.
+function extractList(apiResponse) {
+  const data = apiResponse?.data;
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.content)) return data.content;
+  return [];
+}
+
+function extractTotal(apiResponse) {
+  const data = apiResponse?.data;
+  if (Array.isArray(data)) return data.length;
+  if (data && typeof data.totalElements === 'number') return data.totalElements;
+  return extractList(apiResponse).length;
+}
+
 // ── Tabs ─────────────────────────────────────────────────
 function initTabs() {
   document.querySelectorAll('.tab-btn').forEach(btn => {

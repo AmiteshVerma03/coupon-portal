@@ -26,7 +26,4 @@ public class CreateCouponDto {
 
     @Min(value = 1, message = "Usage limit must be at least 1")
     private int usageLimit;
-
-    @NotNull(message = "Tenant ID is required")
-    private Long tenantId;
 }

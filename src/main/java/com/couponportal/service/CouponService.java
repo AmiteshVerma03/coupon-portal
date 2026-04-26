@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface CouponService {
 
-    CouponResponse createCoupon(CreateCouponDto dto);
+    CouponResponse createCoupon(CreateCouponDto dto, Long tenantId);
 
     // Task 1: paginated for admin listing
     Page<CouponResponse> getAllCouponsForTenant(Long tenantId, int page, int size);
@@ -16,7 +16,7 @@ public interface CouponService {
     // available coupons for users — typically small list, kept non-paginated
     List<CouponResponse> getAvailableCouponsForTenant(Long tenantId);
 
-    CouponResponse getCouponById(Long id);
+    CouponResponse getCouponById(Long id, Long tenantId);
 
-    void deleteCoupon(Long id);
+    void deleteCoupon(Long id, Long tenantId);
 }
